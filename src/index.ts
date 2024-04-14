@@ -49,7 +49,11 @@ const server: net.Server = net.createServer((connection: net.Socket) => {
             });
             let response = "";
             values.forEach((value: any) => {
-              response += `$${value.length}\r\n${value}\r\n`;
+              if (value) {
+                response += `$${value.length}\r\n${value}\r\n`;
+              } else {
+                response += "$-1\r\n";
+              }
             });
             connection.write(`*${values.length}\r\n${response}`);
             break;
@@ -98,7 +102,23 @@ const server: net.Server = net.createServer((connection: net.Socket) => {
             }
             break;
           }
-         
+          case "lrange": {
+            const key = reply[1];
+            const start = reply[2];
+            const end = reply[3];
+            if (!mem.has(key)) {
+              connection.write("*0\r\n");
+            } else {
+              const list = mem.get(key);
+              const values = list.slice(start, end);
+              let response = "";
+              values.forEach((value: any) => {
+                response += `$${value.length}\r\n${value}\r\n`;
+              });
+              connection.write(`*${values.length}\r\n${response}`);
+            }
+            break;
+          }
         }
       },
       returnError: (err: Error) => {
