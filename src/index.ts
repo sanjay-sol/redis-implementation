@@ -11,21 +11,24 @@ const server: net.Server = net.createServer((connection: net.Socket) => {
         console.log("reply-->", reply);
         const type = reply[0];
         const commandHandlers: Record<string, Function> = {
+          //! Strings
           set: handleSet,
           get: handleGet,
           mget: handleMGet,
+          //! Lists
           lpush: handleLPush,
           rpush: handleRPush,
           lpop: handleLPop,
           rpop: handleRPop,
           lrange: handleLRange,
+          brpop: handleBRpop,
         };
 
         const handler = commandHandlers[type];
         if (handler) {
           handler(reply, connection);
         } else {
-            connection.write("-Error unknown command\r\n");
+          connection.write("-Error unknown command\r\n");
         }
       },
       returnError: (err: Error) => {
@@ -146,4 +149,30 @@ function handleLRange(reply: any[], connection: net.Socket) {
     });
     connection.write(`*${values.length}\r\n${response}`);
   }
+}
+
+function handleBRpop(reply: any[], connection: net.Socket) {
+  const keys = reply.slice(1, -1);
+  const timeout = reply[reply.length - 1];
+  let value: any;
+  let key: any;
+  let list: any;
+  let index: number;
+  const check = () => {
+    for (let i = 0; i < keys.length; i++) {
+      key = keys[i];
+      list = mem.get(key);
+      if (list.length > 0) {
+        index = list.length - 1;
+        value = list[index];
+        list.splice(index, 1);
+        connection.write(
+          `*2\r\n$${key.length}\r\n${key}\r\n$${value.length}\r\n${value}\r\n`
+        );
+        return;
+      }
+    }
+    setTimeout(check, timeout);
+  };
+  check();
 }
