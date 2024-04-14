@@ -1,6 +1,6 @@
 import * as net from "node:net";
 import Parser from "redis-parser";
-const mem : any= {};
+const mem = new Map<string, string>();
 const server: net.Server = net.createServer((connection: net.Socket) => {
     console.log("Client connected...");
     connection.on("data", (data: Buffer) => {
@@ -12,13 +12,13 @@ const server: net.Server = net.createServer((connection: net.Socket) => {
                     case 'set': {
                         const key = reply[1];
                         const value = reply[2];
-                        mem[key] = value;
+                        mem.set(key, value);
                         connection.write('+OK\r\n');
                     }
                     break;
                     case 'get': {
                         const key = reply[1];
-                        const value = mem[key];
+                        const value = mem.get(key);
                         console.log("value-->", value);
                         if (!value) {
                             connection.write('$-1\r\n');
@@ -34,10 +34,11 @@ const server: net.Server = net.createServer((connection: net.Socket) => {
             },
         });
         parser.execute(data);
-        // connection.write('+OK\r\n');
     });
 });
 
 server.listen(8000, () => {
     console.log("Server started on port 8000");
 });
+
+// connection.write('-Error any message\r\n);
