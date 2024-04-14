@@ -11,6 +11,12 @@ import {
   handleBRpop,
   handleBLpop,
 } from "./listFunctions";
+import {
+  handleSADD,
+  handleSREM,
+  handleSISMEMBER,
+  handleSINTER,
+} from "./setFunctions";
 const mem = new Map<string, any>();
 const server: net.Server = net.createServer((connection: net.Socket) => {
   console.log("Client connected...");
@@ -21,10 +27,12 @@ const server: net.Server = net.createServer((connection: net.Socket) => {
         console.log("reply-->", reply);
         const type = reply[0].toLowerCase();
         const commandHandlers: Record<string, Function> = {
+          
           //! Strings
           set: handleSet,
           get: handleGet,
           mget: handleMGet,
+
           //! Lists
           lpush: handleLPush,
           rpush: handleRPush,
@@ -34,6 +42,12 @@ const server: net.Server = net.createServer((connection: net.Socket) => {
           llen: handleLLen,
           brpop: handleBRpop,
           blpop: handleBLpop,
+
+          //! Sets
+          sadd: handleSADD,
+          srem: handleSREM,
+          sismember: handleSISMEMBER,
+          sinter: handleSINTER,
         };
 
         const handler = commandHandlers[type];
