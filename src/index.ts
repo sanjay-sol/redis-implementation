@@ -1,6 +1,6 @@
 import * as net from "node:net";
 import Parser from "redis-parser";
-import { handleSet, handleGet, handleMGet } from "./stringFunctions";
+import { handleSet, handleGet, handleMGet, handleSetNX } from "./stringFunctions";
 import {
   handleLPush,
   handleRPush,
@@ -27,9 +27,10 @@ const server: net.Server = net.createServer((connection: net.Socket) => {
         console.log("reply-->", reply);
         const type = reply[0].toLowerCase();
         const commandHandlers: Record<string, Function> = {
-          
+
           //! Strings
           set: handleSet,
+          setnx: handleSetNX,
           get: handleGet,
           mget: handleMGet,
 

@@ -18,6 +18,21 @@ export function handleSet(
   connection.write("+OK\r\n");
 }
 
+export function handleSetNX(
+  reply: any[],
+  connection: net.Socket,
+  mem: Map<string, any>
+) {
+  const key = reply[1];
+  const value = reply[2];
+  if (mem.has(key)) {
+    connection.write("-Error key already exist\r\n");
+    return;
+  }
+  mem.set(key, value);
+  connection.write("+OK\r\n");
+}
+
 export function handleGet(
   reply: any[],
   connection: net.Socket,

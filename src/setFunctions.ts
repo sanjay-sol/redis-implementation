@@ -12,13 +12,12 @@ export function handleSADD(
   }
   const set = mem.get(key);
   if (set?.has(value)) {
-    connection.write(":0\r\n"); 
+    connection.write(":0\r\n");
   } else {
     set?.add(value);
     connection.write(`:${set?.size}\r\n`);
   }
 }
-
 
 export function handleSREM(
   reply: any[],
