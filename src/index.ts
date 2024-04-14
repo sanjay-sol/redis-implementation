@@ -9,7 +9,7 @@ const server: net.Server = net.createServer((connection: net.Socket) => {
     const parser = new Parser({
       returnReply: (reply: any) => {
         console.log("reply-->", reply);
-        const type = reply[0];
+        const type = reply[0].toLowerCase();
         const commandHandlers: Record<string, Function> = {
           //! Strings
           set: handleSet,
@@ -21,14 +21,19 @@ const server: net.Server = net.createServer((connection: net.Socket) => {
           lpop: handleLPop,
           rpop: handleRPop,
           lrange: handleLRange,
+          llen: handleLLen,
           brpop: handleBRpop,
+          blpop: handleBLpop,
         };
 
         const handler = commandHandlers[type];
         if (handler) {
           handler(reply, connection);
         } else {
-          connection.write("-Error unknown command\r\n");
+          const allCommands = Object.keys(commandHandlers).join(",");
+          connection.write(
+            `-Error unknown command. Valid Commands-${allCommands}\r\n`
+          );
         }
       },
       returnError: (err: Error) => {
@@ -172,7 +177,43 @@ function handleBRpop(reply: any[], connection: net.Socket) {
         return;
       }
     }
-    setTimeout(check, timeout);
+    setTimeout(check, timeout * 1000);
   };
   check();
+}
+
+function handleBLpop(reply: any[], connection: net.Socket) {
+  const keys = reply.slice(1, -1);
+  const timeout = reply[reply.length - 1];
+  let value: any;
+  let key: any;
+  let list: any;
+  let index: number;
+  const check = () => {
+    for (let i = 0; i < keys.length; i++) {
+      key = keys[i];
+      list = mem.get(key);
+      if (list.length > 0) {
+        index = 0;
+        value = list[index];
+        list.splice(index, 1);
+        connection.write(
+          `*2\r\n$${key.length}\r\n${key}\r\n$${value.length}\r\n${value}\r\n`
+        );
+        return;
+      }
+    }
+    setTimeout(check, timeout * 1000);
+  };
+  check();
+}
+
+function handleLLen(reply: any[], connection: net.Socket) {
+  const key = reply[1];
+  if (!mem.has(key)) {
+    connection.write(":0\r\n");
+  } else {
+    const list = mem.get(key);
+    connection.write(`:${list.length}\r\n`);
+  }
 }
