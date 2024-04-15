@@ -1,6 +1,12 @@
 import * as net from "node:net";
 import Parser from "redis-parser";
-import { handleSet, handleGet, handleMGet, handleSetNX } from "./stringFunctions";
+import { PubSub } from "./pubsub2";
+import {
+  handleSet,
+  handleGet,
+  handleMGet,
+  handleSetNX,
+} from "./stringFunctions";
 import {
   handleLPush,
   handleRPush,
@@ -17,7 +23,10 @@ import {
   handleSISMEMBER,
   handleSINTER,
 } from "./setFunctions";
+
 const mem = new Map<string, any>();
+const pubSub = new PubSub();
+
 const server: net.Server = net.createServer((connection: net.Socket) => {
   console.log("Client connected...");
 
@@ -27,14 +36,12 @@ const server: net.Server = net.createServer((connection: net.Socket) => {
         console.log("reply-->", reply);
         const type = reply[0].toLowerCase();
         const commandHandlers: Record<string, Function> = {
-
-          //! Strings
+          //?set
           set: handleSet,
-          setnx: handleSetNX,
           get: handleGet,
           mget: handleMGet,
-
-          //! Lists
+          setnx: handleSetNX,
+          //?list
           lpush: handleLPush,
           rpush: handleRPush,
           lpop: handleLPop,
@@ -43,12 +50,15 @@ const server: net.Server = net.createServer((connection: net.Socket) => {
           llen: handleLLen,
           brpop: handleBRpop,
           blpop: handleBLpop,
-
-          //! Sets
+          //?set
           sadd: handleSADD,
           srem: handleSREM,
           sismember: handleSISMEMBER,
           sinter: handleSINTER,
+
+          //?pubsub
+          subscribe: handleSubscribe,
+          publish: handlePublish,
         };
 
         const handler = commandHandlers[type];
@@ -72,3 +82,14 @@ const server: net.Server = net.createServer((connection: net.Socket) => {
 server.listen(8000, () => {
   console.log("Server started on port 8000");
 });
+
+function handleSubscribe(reply: any, socket: net.Socket) {
+  const channels = reply.slice(1);
+  pubSub.subscribe(channels, socket);
+}
+
+function handlePublish(reply: any, socket: net.Socket) {
+  const [_, channel, message] = reply;
+  const result = pubSub.publish(channel, message);
+ socket.write(`:${result}\r\n`);
+}
