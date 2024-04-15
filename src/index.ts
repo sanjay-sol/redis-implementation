@@ -88,8 +88,14 @@ function handleSubscribe(reply: any, socket: net.Socket) {
   pubSub.subscribe(channels, socket);
 }
 
+
 function handlePublish(reply: any, socket: net.Socket) {
   const [_, channel, message] = reply;
   const result = pubSub.publish(channel, message);
- socket.write(`:${result}\r\n`);
+  if (result) {
+    socket.write(":1\r\n");
+  } else {
+    socket.write(":0\r\n");
+
+  }
 }

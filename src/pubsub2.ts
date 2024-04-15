@@ -1,5 +1,4 @@
 import * as net from "net";
-
 interface Subscription {
   channel: string;
   subscribers: net.Socket[];
@@ -52,10 +51,13 @@ export class PubSub {
     });
   }
 
-  publish(channel: string, message: string) {
+  publish(channel: string, message: string): boolean {
     const subscription = this.subscriptions.get(channel);
     if (subscription) {
       publishMessage(subscription, message);
+      return true; 
+    } else {
+      return false;
     }
   }
 }
