@@ -10,14 +10,15 @@ export function handleSADD(
   if (!mem.has(key)) {
     mem.set(key, new Set());
   }
-  const set = mem.get(key);
-  if (set?.has(value)) {
+  const setObj = mem.get(key); 
+  if (setObj?.has(value)) {
     connection.write(":0\r\n");
   } else {
-    set?.add(value);
-    connection.write(`:${set?.size}\r\n`);
+    setObj?.add(value);
+    connection.write(`:${setObj?.size}\r\n`);
   }
 }
+
 
 export function handleSREM(
   reply: any[],

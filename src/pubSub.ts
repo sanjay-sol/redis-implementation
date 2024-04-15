@@ -1,79 +1,63 @@
-export class Susbscribable<MessagingType> {
-  private subscribers: Map<string, Set<(msg: MessagingType) => void>> =
-    new Map();
+import * as net from "net";
+interface Subscription {
+  channel: string;
+  subscribers: net.Socket[];
+}
 
-  constructor() {}
+function createSubscription(channel: string): Subscription {
+  return { channel, subscribers: [] };
+}
 
-  subscribe(channel: string, cb: (msg: MessagingType) => void): () => void {
-    if (!this.subscribers.has(channel)) {
-      this.subscribers.set(channel, new Set());
-    }
-    this.subscribers.get(channel)?.add(cb);
-    return () => {
-      this.subscribers.get(channel)?.delete(cb);
-      if (this.subscribers.get(channel)?.size === 0) {
-        this.subscribers.delete(channel);
-      }
-    };
+function addSubscriber(
+  subscription: Subscription,
+  socket: net.Socket
+): Subscription {
+  return {
+    ...subscription,
+    subscribers: [...subscription.subscribers, socket],
+  };
+}
+
+function publishMessage(subscription: Subscription, message: string) {
+  subscription.subscribers.forEach((subscriber) => {
+    subscriber.write(
+      `*3\r\n$7\r\nmessage\r\n$${subscription.channel.length}\r\n${subscription.channel}\r\n$${message.length}\r\n${message}\r\n`
+    );
+  });
+}
+
+export class PubSub {
+  subscriptions: Map<string, Subscription>;
+
+  constructor() {
+    this.subscriptions = new Map();
   }
 
-  publish(channel: string, msg: MessagingType): void {
-    if (this.subscribers.has(channel)) {
-      this.subscribers.get(channel)?.forEach((cb) => cb(msg));
+  subscribe(channels: string[], socket: net.Socket) {
+    channels.forEach((channel) => {
+      if (!this.subscriptions.has(channel)) {
+        this.subscriptions.set(channel, createSubscription(channel));
+      }
+      this.subscriptions.set(
+        channel,
+        addSubscriber(this.subscriptions.get(channel)!, socket)
+      );
+
+      socket.write(
+        `*3\r\n$9\r\nsubscribe\r\n$${channel.length}\r\n${channel}\r\n:${
+          this.subscriptions.get(channel)?.subscribers.length
+        }\r\n`
+      );
+    });
+  }
+
+  publish(channel: string, message: string): boolean {
+    const subscription = this.subscriptions.get(channel);
+    if (subscription) {
+      publishMessage(subscription, message);
+      return true; 
+    } else {
+      return false;
     }
   }
 }
-
-// export class Susbscribable {
-//     events: { [key: string]: Function[] } = {};
-
-//     on(event: string, callback: Function) {
-//         if (!this.events[event]) {
-//         this.events[event] = [];
-//         }
-//         this.events[event].push(callback);
-//     }
-
-//     emit(event: string, ...args: any[]) {
-//         if (this.events[event]) {
-//         this.events[event].forEach((callback) => {
-//             callback(...args);
-//         });
-//         }
-//     }
-// }
-
-// export class PubSub extends Susbscribable {
-//     publish(event: string, ...args: any[]) {
-//         this.emit(event, ...args);
-//     }
-// }
-
-// export class Redis extends PubSub {
-//     mem: Map<string, any> = new Map();
-//     constructor() {
-//         super();
-//         this.on("set", (key: string, value: any) => {
-//         this.mem.set(key, value);
-//         });
-//         this.on("get", (key: string) => {
-//         this.publish("response", this.mem.get(key));
-//         });
-//     }
-// }
-
-// export class Susbscribable<MessagingType> {
-//   private subscribers: Set<(msg:MessagingType) => void> = new Set();
-//     constructor() { }
-//     subscribe(cb: (msg:MessagingType) => void) : () => void {
-//         this.subscribers.add(cb);
-//         return () => {
-//             this.subscribers.delete(cb);
-//         };
-//     }
-//     publish(msg:MessagingType) : void {
-//         this.subscribers.forEach((cb) => cb(msg));
-//     }
-// }
-
-

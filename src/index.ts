@@ -1,6 +1,7 @@
 import * as net from "node:net";
 import Parser from "redis-parser";
-import { PubSub } from "./pubsub2";
+import { handleSubscribe, handlePublish } from "./pubSubFunctions";
+
 import {
   handleSet,
   handleGet,
@@ -25,7 +26,6 @@ import {
 } from "./setFunctions";
 
 const mem = new Map<string, any>();
-const pubSub = new PubSub();
 
 const server: net.Server = net.createServer((connection: net.Socket) => {
   console.log("Client connected...");
@@ -36,11 +36,13 @@ const server: net.Server = net.createServer((connection: net.Socket) => {
         console.log("reply-->", reply);
         const type = reply[0].toLowerCase();
         const commandHandlers: Record<string, Function> = {
+          ping: handlePing,
           //?set
           set: handleSet,
           get: handleGet,
           mget: handleMGet,
           setnx: handleSetNX,
+
           //?list
           lpush: handleLPush,
           rpush: handleRPush,
@@ -50,6 +52,7 @@ const server: net.Server = net.createServer((connection: net.Socket) => {
           llen: handleLLen,
           brpop: handleBRpop,
           blpop: handleBLpop,
+
           //?set
           sadd: handleSADD,
           srem: handleSREM,
@@ -83,19 +86,6 @@ server.listen(8000, () => {
   console.log("Server started on port 8000");
 });
 
-function handleSubscribe(reply: any, socket: net.Socket) {
-  const channels = reply.slice(1);
-  pubSub.subscribe(channels, socket);
-}
-
-
-function handlePublish(reply: any, socket: net.Socket) {
-  const [_, channel, message] = reply;
-  const result = pubSub.publish(channel, message);
-  if (result) {
-    socket.write(":1\r\n");
-  } else {
-    socket.write(":0\r\n");
-
-  }
+function handlePing(reply: any[], connection: net.Socket) {
+  connection.write("+PONG\r\n");
 }
