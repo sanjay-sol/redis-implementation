@@ -90,18 +90,24 @@ export class PubSub {
   privateMatchPattern(channel: string, pattern: string) {
     const firstPart = pattern.split("*")[0];
     const secondPart = pattern.split("*")[1];
-    if (channel.startsWith(firstPart) && channel.endsWith(secondPart)) {
-      return true || channel == pattern;
+    if (channel.startsWith(firstPart) || channel.endsWith(secondPart)) {
+      return true;
     }
     return false;
   }
 
   publish(channel: string, message: string): boolean {
-    const subscription = this.subscriptions.get(channel);
-    if (subscription) {
+    const matchingSubscriptions = Array.from(this.subscriptions.values()).filter(
+      (subscription) => {
+        console.log("subscription", subscription);
+        return this.privateMatchPattern(channel, subscription.channel) || channel == subscription.channel;
+      }
+    );
+    console.log("matchingSubscriptions", matchingSubscriptions);
+    matchingSubscriptions.forEach((subscription) => {
       publishMessage(subscription, message);
-      return true;
-    }
-    return false;
+    });
+
+    return matchingSubscriptions.length > 0;
   }
 }
