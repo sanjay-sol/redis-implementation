@@ -1,5 +1,3 @@
-// pubSub.ts
-
 import * as net from "net";
 
 interface Subscription {
@@ -22,7 +20,10 @@ function addSubscriber(
 }
 
 function publishMessage(subscription: Subscription, message: string) {
-  subscription.subscribers.forEach((subscriber) => {
+  if (message.endsWith("\r\n")) {
+    message = message.slice(0, -2);
+  }
+  subscription?.subscribers?.forEach((subscriber) => {
     subscriber.write(
       `*3\r\n$7\r\nmessage\r\n$${subscription.channel.length}\r\n${subscription.channel}\r\n$${message.length}\r\n${message}\r\n`
     );
@@ -39,11 +40,9 @@ export class PubSub {
   subscribe(channels: string[], socket: net.Socket) {
     console.log("channels", channels);
     channels.forEach((channel) => {
-      console.log("subscriptions11", this.subscriptions);
       if (!this.subscriptions.has(channel)) {
         this.subscriptions.set(channel, createSubscription(channel));
       }
-      console.log("subscriptions12", this.subscriptions);
       this.subscriptions.set(
         channel,
         addSubscriber(this.subscriptions.get(channel)!, socket)
@@ -67,7 +66,6 @@ export class PubSub {
         this.privateMatchPattern(subscription.channel, pattern)
       );
 
-      console.log("matchingSubscriptions", matchingSubscriptions);
       matchingSubscriptions.forEach((subscription) => {
         this.subscriptions.set(
           subscription.channel,
@@ -97,17 +95,37 @@ export class PubSub {
   }
 
   publish(channel: string, message: string): boolean {
-    const matchingSubscriptions = Array.from(this.subscriptions.values()).filter(
-      (subscription) => {
-        console.log("subscription", subscription);
-        return this.privateMatchPattern(channel, subscription.channel) || channel == subscription.channel;
-      }
-    );
+    const matchingSubscriptions = Array.from(
+      this.subscriptions.values()
+    ).filter((subscription) => {
+      return (
+        this.privateMatchPattern(channel, subscription.channel) ||
+        channel == subscription.channel
+      );
+    });
     console.log("matchingSubscriptions", matchingSubscriptions);
     matchingSubscriptions.forEach((subscription) => {
       publishMessage(subscription, message);
     });
 
     return matchingSubscriptions.length > 0;
+  }
+
+  unsubscribe(channels: string[], socket: net.Socket) {
+    channels.forEach((channel) => {
+      const subscription = this.subscriptions.get(channel);
+      if (subscription) {
+        const index = subscription.subscribers.indexOf(socket);
+        if (index !== -1) {
+          subscription.subscribers.splice(index, 1);
+
+          this.subscriptions.delete(channel);
+          const message = `*3\r\n$11\r\nunsubscribe\r\n$${channel.length}\r\n${channel}\r\n`;
+          socket.write(message);
+        } else {
+          socket.write("-Error not subscribed to channel\r\n");
+        }
+      }
+    });
   }
 }

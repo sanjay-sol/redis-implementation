@@ -62,6 +62,8 @@ const server: net.Server = net.createServer((connection: net.Socket) => {
           subscribe: handleSubscribe,
           publish: handlePublish,
           psubscribe: handlePSubscribe,
+          unsubscribe: handleUnsubscribe,
+
         };
 
         const handler = commandHandlers[type];
@@ -111,4 +113,9 @@ function handlePublish(reply: any, socket: net.Socket) {
 function handlePSubscribe(reply: any, socket: net.Socket) {
   const patterns = reply.slice(1);
   pubSub.psubscribe(patterns, socket);
+}
+
+function handleUnsubscribe(reply: any, socket: net.Socket) {
+  const channels = reply.slice(1);
+  pubSub.unsubscribe(channels, socket);
 }
