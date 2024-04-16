@@ -1,7 +1,6 @@
 import * as net from "node:net";
 import Parser from "redis-parser";
-import { handleSubscribe, handlePublish } from "./pubSubFunctions";
-
+import { PubSub } from "./pubSub";
 import {
   handleSet,
   handleGet,
@@ -62,6 +61,7 @@ const server: net.Server = net.createServer((connection: net.Socket) => {
           //?pubsub
           subscribe: handleSubscribe,
           publish: handlePublish,
+          psubscribe: handlePSubscribe,
         };
 
         const handler = commandHandlers[type];
@@ -88,4 +88,27 @@ server.listen(8000, () => {
 
 function handlePing(reply: any[], connection: net.Socket) {
   connection.write("+PONG\r\n");
+}
+
+
+const pubSub = new PubSub();
+
+function handleSubscribe(reply: any, socket: net.Socket) {
+  const channels = reply.slice(1);
+  pubSub.subscribe(channels, socket);
+}
+
+function handlePublish(reply: any, socket: net.Socket) {
+  const [_, channel, message] = reply;
+  const result = pubSub.publish(channel, message);
+  if (result) {
+    socket.write(":1\r\n");
+  } else {
+    socket.write(":0\r\n");
+  }
+}
+
+function handlePSubscribe(reply: any, socket: net.Socket) {
+  const patterns = reply.slice(1);
+  pubSub.psubscribe(patterns, socket);
 }
