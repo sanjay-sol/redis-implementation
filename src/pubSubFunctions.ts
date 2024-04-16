@@ -17,3 +17,13 @@ export function handlePublish(reply: any, socket: net.Socket) {
     socket.write(":0\r\n");
   }
 }
+
+export function handlePSubscribe(reply: any, socket: net.Socket) {
+  const patterns = reply.slice(1);
+  pubSub.psubscribe(patterns, socket);
+}
+
+export function handleUnsubscribe(reply: any, socket: net.Socket) {
+  const channels = reply.slice(1);
+  pubSub.unsubscribe(channels, socket);
+}

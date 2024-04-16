@@ -24,6 +24,10 @@ import {
   handleSINTER,
 } from "./setFunctions";
 
+import { handleSubscribe, handlePublish, handlePSubscribe, handleUnsubscribe } from "./pubSubFunctions";
+
+import { StreamManager } from "./streams";
+
 const mem = new Map<string, any>();
 
 const server: net.Server = net.createServer((connection: net.Socket) => {
@@ -64,6 +68,9 @@ const server: net.Server = net.createServer((connection: net.Socket) => {
           psubscribe: handlePSubscribe,
           unsubscribe: handleUnsubscribe,
 
+          //?streams
+          xadd: handleXAdd,
+
         };
 
         const handler = commandHandlers[type];
@@ -92,30 +99,16 @@ function handlePing(reply: any[], connection: net.Socket) {
   connection.write("+PONG\r\n");
 }
 
+const streamManager = new StreamManager();
 
-const pubSub = new PubSub();
-
-function handleSubscribe(reply: any, socket: net.Socket) {
-  const channels = reply.slice(1);
-  pubSub.subscribe(channels, socket);
+function handleXAdd(reply: any, socket: net.Socket) {
+  const [, streamName, , ...fields] = reply;
+  const fieldsObj = Object.fromEntries(
+    fields.map((field: string, index: number) => [field, fields[index + 1]])
+  );
+  const elementId = streamManager.xadd(streamName, fieldsObj);
+  console.log("elementId", elementId);
+  socket.write(`"${elementId}"\r\n`);
 }
 
-function handlePublish(reply: any, socket: net.Socket) {
-  const [_, channel, message] = reply;
-  const result = pubSub.publish(channel, message);
-  if (result) {
-    socket.write(":1\r\n");
-  } else {
-    socket.write(":0\r\n");
-  }
-}
 
-function handlePSubscribe(reply: any, socket: net.Socket) {
-  const patterns = reply.slice(1);
-  pubSub.psubscribe(patterns, socket);
-}
-
-function handleUnsubscribe(reply: any, socket: net.Socket) {
-  const channels = reply.slice(1);
-  pubSub.unsubscribe(channels, socket);
-}
