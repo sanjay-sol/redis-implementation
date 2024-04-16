@@ -119,11 +119,12 @@ export class PubSub {
         if (index !== -1) {
           subscription.subscribers.splice(index, 1);
 
-          this.subscriptions.delete(channel);
+          if (subscription.subscribers.length === 0) {
+            this.subscriptions.delete(channel);
+          }
+
           const message = `*3\r\n$11\r\nunsubscribe\r\n$${channel.length}\r\n${channel}\r\n`;
           socket.write(message);
-        } else {
-          socket.write("-Error not subscribed to channel\r\n");
         }
       }
     });
