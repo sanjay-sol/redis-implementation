@@ -20,4 +20,22 @@ export class StreamManager {
     this.streams.set(streamName, stream);
     return id;
   }
+  xread(count: number | null, block: number | null, streams: string[]) {
+    const result: any[] = [];
+
+    streams.forEach((streamName) => {
+      const stream = this.streams.get(streamName);
+      if (stream) {
+        const elements: any[] = [];
+        stream.elements.forEach((fields, id) => {
+          elements.push(id, fields);
+        });
+        result.push(streamName, elements);
+      } else {
+        result.push(streamName, []);
+      }
+    });
+
+    return result;
+  }
 }

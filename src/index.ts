@@ -70,6 +70,7 @@ const server: net.Server = net.createServer((connection: net.Socket) => {
 
           //?streams
           xadd: handleXAdd,
+          xread: handleXread,
 
         };
 
@@ -101,14 +102,34 @@ function handlePing(reply: any[], connection: net.Socket) {
 
 const streamManager = new StreamManager();
 
-function handleXAdd(reply: any, socket: net.Socket) {
+// handle parsing correctly
+function handleXAdd(reply: any, socket: net.Socket, mem: Map<string, any>) {
   const [, streamName, , ...fields] = reply;
-  const fieldsObj = Object.fromEntries(
-    fields.map((field: string, index: number) => [field, fields[index + 1]])
-  );
-  const elementId = streamManager.xadd(streamName, fieldsObj);
-  console.log("elementId", elementId);
-  socket.write(`"${elementId}"\r\n`);
+  const fieldsObject: Record<string, string> = {};
+  for (let i = 0; i < fields.length; i += 2) {
+    fieldsObject[fields[i]] = fields[i + 1];
+  }
+  const id = streamManager.xadd(streamName, fieldsObject);
+  socket.write(`+${id}\r\n`);
+} 
+
+
+function handleXread(reply: any, socket: net.Socket) {
+  const [, count, , ...streams] = reply;
+  const result = streamManager.xread(count, null, streams);
+  console.log("result", result);
+  socket.write(`*${result.length}\r\n`);
+  result.forEach((stream) => {
+    socket.write(`*${stream.length}\r\n`);
+    stream.forEach((element:any) => {
+      if (Array.isArray(element)) {
+        socket.write(`*${element.length}\r\n`);
+        element.forEach((field) => {
+          socket.write(`$${field.length}\r\n${field}\r\n`);
+        });
+      } else {
+        socket.write(`$${element.length}\r\n${element}\r\n`);
+      }
+    });
+  });
 }
-
-
