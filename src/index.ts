@@ -1,6 +1,5 @@
 import * as net from "node:net";
 import Parser from "redis-parser";
-import { PubSub } from "./pubSub";
 import {
   handleSet,
   handleGet,
@@ -102,7 +101,6 @@ function handlePing(reply: any[], connection: net.Socket) {
 
 const streamManager = new StreamManager();
 
-// handle parsing correctly
 function handleXAdd(reply: any, socket: net.Socket, mem: Map<string, any>) {
   const [, streamName, , ...fields] = reply;
   const fieldsObject: Record<string, string> = {};
